@@ -168,9 +168,99 @@ function [state, out, debugOut] = filterStep(block, t, state, odometer, sensor, 
         dtheta_R = u(1);
         dtheta_L = u(2);
         
-        % TODO: implement the prediction step
+        % Prediction step
         
+        % To simplify the equations, we write the inputs in terms
+        % of v and omega
+        v = (R_R * dtheta_R + R_L * dtheta_L) / 2;
+        omega = (R_R * dtheta_R - R_L * dtheta_L) / (2 * a);
         
+        % Some abreviations for the system matrix
+        phi = x(3);
+        sk = sin(phi);
+        ck = cos(phi);
+        skp1 = sin(phi + T * omega);
+        ckp1 = cos(phi + T * omega);
+        
+        % do state prediction
+        if block.useNumericPrediction
+            % Use numeric integration
+            % This is applicable to any nonlinear system            
+            options = odeset('RelTol', 10^-13, 'AbsTol', eps);        
+            [~, X] = ode45(@(t, x)vomega_model(x, v, omega), [0, T], x, options);
+            x(1:3) = (X(end, :)).';                
+        else
+            % Exact (analytical) solution
+            if abs(omega) < 1e-12
+                x(1:3) = x(1:3) + [v * T * ck; ...
+                                   v * T * sk; ...
+                                            0];
+            else
+                x(1:3) = x(1:3) + [v / omega * (skp1 - sk); ...
+                                   v / omega * (ck - ckp1); ...
+                                   T * omega];
+            end  
+        end
+
+        % do covariance prediction
+
+        % Input error covariance
+        N = diag([block.odometryError^2, block.odometryError^2]);
+
+        if ~block.useExactDiscretization
+            % linearize first...
+            A = [0, 0, -v * sk; ...
+                 0, 0,  v * ck; ...
+                 0, 0,       0];
+            
+            B = [ R_R / 2 * ck,  R_L / 2 * ck; ...
+                  R_R / 2 * sk,  R_L / 2 * sk; ...
+                 R_R / (2 * a), -R_L / (2 * a)];
+             
+            % ... then discretize using the matrix exponential
+            F = expm(A * T);
+            
+            I = eye(size(F));
+            S = T * I;
+            
+            i = 2;
+            while true
+                D = T^i / factorial(i) * A^(i - 1);
+                S = S + D;
+                i = i + 1;
+                if all(abs(D(:)) <= eps); break; end
+            end
+            H = S * B;
+            
+            F = blkdiag(F, eye(size(P, 1) - 3));
+            P = F * P * F.';
+            P(1:3, 1:3) = P(1:3, 1:3) + H * N * H.';
+        else
+            % discretize first (only applicable, if ODEs can be solved
+            % analytically), then linearize the discrete model
+
+            if abs(omega) < 1e-12
+                A_dis = [1, 0, -v * T * sk; ...
+                         0, 1, v * T * ck; ...
+                         0, 0, 1];
+                B_dis = [R_R * T / 2 * ck, R_L * T / 2 * ck; ...
+                         R_R * T / 2 * sk, R_L * T / 2 * ck; ...
+                                        0,                0];
+            else
+                A_dis = [1, 0, v / omega * (ckp1 - ck); ...
+                         0, 1, v / omega * (skp1 - sk); ...
+                         0, 0,                       1];
+                B_dis = [R_R / (2 * omega) * (v * T / a * ckp1 + R_L * dtheta_L / (a * omega) * (sk - skp1)), ...
+                                -R_L / (2 * omega) * (v * T / a * ckp1 + R_R * dtheta_R / (a * omega) * (sk - skp1)); ...
+                         R_R / (2 * omega) * (v * T / a * skp1 - R_L * dtheta_L / (a * omega) * (ck - ckp1)), ...
+                                -R_L / (2 * omega) * (v * T / a * skp1 - R_R * dtheta_R / (a * omega) * (ck - ckp1)); ...
+                         R_R * T / (2 * a), -R_L * T / (2 * a)];
+            end
+            
+            A_dis = blkdiag(A_dis, eye(size(P, 1) - 3));
+            P = A_dis * P * A_dis.';            
+            P(1:3, 1:3) = P(1:3, 1:3) + B_dis * N * B_dis.';
+        end
     end
 
     function [x, P, features] = doUpdate(x, P, features, meas)
