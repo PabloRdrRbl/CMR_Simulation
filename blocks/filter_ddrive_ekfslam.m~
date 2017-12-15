@@ -306,7 +306,7 @@ function [state, out, debugOut] = filterStep(block, t, state, odometer, sensor, 
             rangeErrors = (block.rangeError * ranges).^2;
             P_helper = blkdiag(P, diag(reshape([bearingErrors; rangeErrors], 1, [])));
 
-            % Matrix to transform P_helper into covariance for extended state
+            % matrix to transform P_helper into covariance for extended state
             J = zeros(length(x), len + 2 * length(midx_new));			
             J(sub2ind(size(J), 1:len, 1:len)) = 1; % keep old state variables -> top-left block is identity matrix
             x_rows = len + (1:2:(2 * length(midx_new)));
@@ -322,10 +322,12 @@ function [state, out, debugOut] = filterStep(block, t, state, odometer, sensor, 
             J(sub2ind(size(J), x_rows, range_cols)) = c;
             J(sub2ind(size(J), y_rows, range_cols)) = s;	
 
-            % Extend state covariance (using the transformation J), 
-            % process noise Q and landmark association data
+            % extend state covariance (using the transformation J), process noise Q and landmark association data
             P = J * P_helper * J';                
-            features = [features; visIdx(midx_new)];                      
+            features = [features; visIdx(midx_new)];
+            
+                            
+            features = [features; visIdx(midx_new)];
         end
 
         if ~isempty(midx_old)
@@ -340,49 +342,9 @@ function [state, out, debugOut] = filterStep(block, t, state, odometer, sensor, 
             x_idx = 2 + 2 * fidx_old';
             y_idx = 3 + 2 * fidx_old';
 
-            % Update step
+            % TODO: implement the update step here
             
-            deltas = [x(x_idx) - x(1), x(y_idx) - x(2)];
-
-            if block.useBearing
-                % predict bearing measurements
-                z = atan2(deltas(:, 2), deltas(:, 1)) - x(3);
-                % determine innovation from bearing measurements
-                delta_y = [delta_y; mod(meas.bearing(midx_old) - z + pi, 2 * pi) - pi];
-
-                % fill in corresponding entries in the jacobi matrix
-                denoms = sum(deltas.^2, 2);
-                C_b = zeros(length(midx_old), length(x));
-                C_b(:, [1 2]) = [deltas(:, 2) ./ denoms, -deltas(:, 1) ./ denoms];
-                C_b(:, 3) = -1;
-                C_b(sub2ind(size(C_b), 1:length(midx_old), x_idx)) = -deltas(:, 2) ./ denoms;
-                C_b(sub2ind(size(C_b), 1:length(midx_old), y_idx)) = deltas(:, 1) ./ denoms;
-                C = [C; C_b];
-
-                % covariance of measurement noise -> for bearing measurements independent of sensor output
-                W = blkdiag(W, block.bearingError^2 * eye(length(midx_old)));
-            end
-
-            if block.useRange
-
-                % predict range measurements
-                z = sqrt(sum(deltas(:, 1).^2 + deltas(:, 2).^2, 2));
-                % 'real' sensor output
-                ranges = meas.range(midx_old);
-                % compute difference = innovation 
-                delta_y = [delta_y; ranges - z];
-
-                % fill in corresponding entries in the jacobi matrix
-                C_r = zeros(length(midx_old), length(x));
-                C_r(:, [1 2]) = [-deltas(:, 1) ./ z, -deltas(:, 2) ./ z];
-                C_r(sub2ind(size(C_r), 1:length(midx_old), x_idx)) = deltas(:, 1) ./ z;
-                C_r(sub2ind(size(C_r), 1:length(midx_old), y_idx)) = deltas(:, 2) ./ z;
-                C = [C; C_r];
-
-                % covariance of measurement noise (noise scales with distance)
-                W = blkdiag(W, diag((block.rangeError * ranges).^2));				
-            end
-                  
+            
             % compute Kalman gain matrix
             K = P * C' / (C * P * C' + W);
 
