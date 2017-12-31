@@ -11,6 +11,7 @@ syms q1 q2 q3 q4
 syms N_r_NB N_v_NB q_NB
 syms x
 
+
 N_r_NB = [N_r_NBx; N_r_NBy; N_r_NBz];
 N_v_NB = [N_v_NBx; N_v_NBy; N_v_NBz];
 q_NB = [q1; q2; q3; q4];
@@ -70,7 +71,30 @@ x_dot(9) = q3_dot;
 x_dot(10) = q4_dot;
 
 % A = df/dx
-jacobian(x_dot, x)
+jacobian(x_dot, x);
 
 % B = df/du
-jacobian(x_dot, u)
+jacobian(x_dot, u);
+
+% n - position of the NED-Navigation frame {N} frame w.r.t. ECEF-frame {E}
+syms nx ny nz
+syms n
+
+n = [nx; ny; nz];
+
+% q - attitude of the NED-Navigation frame {N} frame w.r.t. ECEF-frame {E}
+syms q1_EN q2_EN q3_EN q4_EN
+syms q_EN
+
+q_EN = [q1_EN; q2_EN; q3_EN; q4_EN];
+
+% Rotation matrix of {N} wrt. {E}
+R_EN = [q1_EN^2-q2_EN^2-q3_EN^2+q4_EN^2,                  2*(q1*q2-q3*q4),       2*(q1_EN*q3_EN+q2_EN*q4_EN);
+               2*(q1_EN*q2_EN+q3*q4_EN), -q1_EN^2+q2_EN^2-q3_EN^2+q4_EN^2,       2*(q2_EN*q3_EN-q1_EN*q4_EN);
+            2*(q1_EN*q3_EN-q2_EN*q4_EN),      2*(q2_EN*q3_EN+q1_EN*q4_EN), -q1_EN^2-q2_EN^2+q3_EN^2+q4_EN^2];
+
+% Transform to ECEF-frame
+y = R_EN * N_r_NB + n;
+
+% C = dg/dx
+jacobian(y, x)

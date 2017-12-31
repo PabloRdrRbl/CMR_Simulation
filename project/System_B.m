@@ -9,7 +9,7 @@ function B = System_B(x, u, g)
     
     B = zeros(10, 6);
     
-        % From system state
+    % From system state
     N_r_NBx = x(1);
     N_r_NBy = x(2);
     N_r_NBz = x(3);
