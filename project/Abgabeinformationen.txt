@@ -1,6 +1,6 @@
-Nachname: 
-Vorname: 
-Marikelnummer: 
-Studiengang: 
-Immatrikulationsjahr: 
+Nachname: Rodríguez Robles
+Vorname: Pablo
+Marikelnummer: 47345441 
+Studiengang: Austausch, Luft- und Raumfahrt
+Immatrikulationsjahr: 2014
 
