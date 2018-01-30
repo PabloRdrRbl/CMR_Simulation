@@ -8,6 +8,7 @@
 % Return values:
 % - f_out: handle to launcher figure
 %
+
 function f_out = launcher(initialPath) 
 	
     defaultBackground = get(0, 'defaultUicontrolBackgroundColor');

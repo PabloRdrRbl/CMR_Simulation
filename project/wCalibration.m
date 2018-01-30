@@ -5,9 +5,6 @@ function [w_sigma, w_mean, w_bias] = wCalibration (w)
     % Implementation of the sigma/mean/bias computation.
     % The result is a (3,1) vector for each one, containing the value for
     % the three spatial directions
-    w_sigma = [0; 0; 0];
-    w_mean = [0; 0; 0];
-    w_bias = [0; 0; 0];
     
     % Operations computed along the second dimension of the matrix.
     % i.e. mean is computed for all the values of w_x along time

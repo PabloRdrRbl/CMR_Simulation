@@ -9,14 +9,14 @@ function dx = System_dx(t, x, u, g)
     % g - gravity
     
     % From system state
-    N_r_NB = [x(1); x(2); x(3)];
+    % N_r_NB = [x(1); x(2); x(3)];
     N_v_NB = [x(4); x(5); x(6)];
     
     % From input u
     B_a_IB = [u(1); u(2); u(3)];
     B_omega_IBx = u(4);
     B_omega_IBy = u(5);
-    B_omega_IBz = u(6);
+    B_omega_IBz = u(6); 
     
     % Initialize nonlinear continous system function dx = f(x, u)
     dx = zeros(10, 1);
@@ -30,8 +30,9 @@ function dx = System_dx(t, x, u, g)
     q_NB = [q1; q2; q3; q4];
     
     % Rotation matrix of {B} wrt. {N} from quaternion NB
+    % From B to N
     R_NB = Quat2DCM(q_NB);
-    
+   
     % Transfor acceleration from IMU meassurements to system acceleration
     
     % Quaternion dynamics (see Slide 2 from "Hilfsblatt")
@@ -52,11 +53,12 @@ function dx = System_dx(t, x, u, g)
     % to the rotating Earth NED can be cosidered an inertial system.
     % As a result the imput accelerations provided IB is can be transformed
     % to NB with a rotation form I (or E) to N.
+    % From B to N
     N_a_IB = R_NB * B_a_IB;
     
     % It is necessary to substract the gravity acceleration, in NED this is
     % the down component (z)
-    N_a_IB(3) = N_a_IB(3) + g;
+    N_a_IB(3) = N_a_IB(3) + abs(g);
     
     dx(1) = N_v_NB(1);
     dx(2) = N_v_NB(2);
